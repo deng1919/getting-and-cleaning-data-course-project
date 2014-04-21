@@ -58,4 +58,4 @@ write.table(output, './tidydata.txt', sep='\t')
 
 tp_sum_meanstd<-as.data.frame(t(sum_meanstd))
 output_meanstd<-cbind(sub, act, tp_sum_meanstd, row.names=NULL)
-write.table(output_meanstd, './tidydata_meanstd.txt', sep='\t')
+write.table(output_meanstd, './tidydata_meanstd.txt', row.names=F)
