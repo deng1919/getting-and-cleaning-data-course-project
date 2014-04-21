@@ -18,11 +18,11 @@ colnames(all_df)<-col_name_vector
 
 # part 2: select columns containing only mean and std of each measurement
 
-mean_col<-grepl('mean', col_name_vector)
-std_col<-grepl('std', col_name_vector)
-meanfreq_col<-grepl('meanFreq', col_name_vector)
-col_select<-(mean_col|std_col)&(!meanfreq_col)
-col_select[1:2]<-TRUE
+mean_col<-grepl('-mean()', col_name_vector, fixed=TRUE)
+std_col<-grepl('-std()', col_name_vector, fixed=TRUE)
+sub_col<-grepl('Subject', col_name_vector)
+al_col<-grepl('Activity_Label', col_name_vector)
+col_select<-mean_col|std_col|sub_col|al_col
 
 df_meanstd<-all_df[,col_select]
 
@@ -40,12 +40,22 @@ for (i in 1:nrow(activity_labels)){
 # for each subject and each activity
 f1<-as.factor(all_df$Subject)
 f2<-ordered(all_df$Activity_Label, levels=as.character(activity_labels$V2))
+
 s_df<-split(all_df,list(f1,f2))
 n_col<-ncol(all_df)
 sum<-sapply(s_df, function(y) colMeans(y[,3:n_col]))
-tp_sum<-as.data.frame(t(sum))
+
+s_df_meanstd<-split(df_meanstd, list(f1, f2))
+n_col_meanstd<-ncol(df_meanstd)
+sum_meanstd<-sapply(s_df_meanstd, function(y) colMeans(y[,3:n_col_meanstd]))
+
 sub<-data.frame(Subject=rep(1:30, times=6))
 act<-data.frame(Activity=rep(actlab_vect, each=30))
+
+tp_sum<-as.data.frame(t(sum))
 output<-cbind(sub, act, tp_sum, row.names=NULL)
 write.table(output, './tidydata.txt', sep='\t')
 
+tp_sum_meanstd<-as.data.frame(t(sum_meanstd))
+output_meanstd<-cbind(sub, act, tp_sum_meanstd, row.names=NULL)
+write.table(output_meanstd, './tidydata_meanstd.txt', sep='\t')
