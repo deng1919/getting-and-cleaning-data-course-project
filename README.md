@@ -45,7 +45,7 @@ all_df<-rbind(train_all, test_all)
 To label the column names in the all_df using information from *features.txt*, I first read the file into a dataframe **feature**. A vector for column names **col_name_vector** is then created by combining the "Subject" and "Activity_Label" with elements in the second column of feature.  Finally, the value to **col_name_vector** is passed into the **all_df** dataframe using *colnames* function
 ```
 feature<-read.table('./UCI HAR Dataset/features.txt')
-col_name_vector<-c('Subject','Activity_Label',as.character(feature[[2]]))
+col_name_vector<-c('Subject','ActivityLabel', as.character(feature[[2]]))
 colnames(all_df)<-col_name_vector
 ```
 Now the **all_df** dataframe contains all data from training and test data sets with both subject and activity information.  It is noticed that activity information is still coded by 1 to 6 at this stage.
@@ -58,7 +58,7 @@ The final selection were combined into the logical vector "col_select" by **unio
 mean_col<-grepl('-mean()', col_name_vector, fixed=TRUE)
 std_col<-grepl('-std()', col_name_vector, fixed=TRUE)
 sub_col<-grepl('Subject', col_name_vector)
-al_col<-grepl('Activity_Label', col_name_vector)
+al_col<-grepl('ActivityLabel', col_name_vector)
 col_select<-mean_col|std_col|sub_col|al_col
 ```
 The original dataframe is subseted using **col_select** to get the dataframe **df_meanstd**, which only contain variable on means and standard deviations.
@@ -75,49 +75,39 @@ actlab_vect<-as.character(activity_labels[[2]])
 Using a for loop, I substitute the number code in the "Activity_Label" column with the character names in the actlab vector by first checking which rows have the Activity_label of 1, 2, ... etc, followed substitution.
 ```
 for (i in 1:nrow(activity_labels)){
-    index<-which(df_meanstd$Activity_Label==activity_labels[i,1])
-    df_meanstd[index,]$Activity_Label<-actlab_vect[i]
-    all_df[index,]$Activity_Label<-actlab_vect[i]
+    index<-which(df_meanstd$ActivityLabel==activity_labels[i,1])
+    df_meanstd[index,]$ActivityLabel<-actlab_vect[i]
 }
 ```
-The substitution is done for both the original data set and the data set containing only means and standard deviations.
-
 Create a tidy data set that containing the average of means and standard deviations for each subject and each activity
 ------------------
-Because the data need to be split using two factors -- Subject and Activity_Label, I changed these two columns into factors, f1 and f2 respectively, using the following code.
+Because the data need to be split using two factors -- Subject and ActivityLabel, I changed these two columns into factors, f1 and f2 respectively, using the following code.
 ```
-f1<-as.factor(all_df$Subject)
-f2<-ordered(all_df$Activity_Label, levels=as.character(activity_labels$V2))
+f1<-as.factor(all_meanstd$Subject)
+f2<-ordered(all_meanstd$ActivityLabel, levels=as.character(activity_labels$V2))
 ```
-f1 has 30 levels and f2 has 6 levels.  The the dataframe is splited according to the combinations of these two factors, which has 30\*6=180 levels.  Means of each columns except the first two columns containing the factorial information are calculated using **sapply** and inline function **colMeans**.  The calculation is done on both the original data set and the data set containing only means and standard deviations.
-### The code for original data set:
-```
-s_df<-split(all_df,list(f1,f2))
-n_col<-ncol(all_df)
-sum<-sapply(s_df, function(y) colMeans(y[,3:n_col]))
-```
-### The code for the mean and std data set:
+f1 has 30 levels and f2 has 6 levels.  The the dataframe is splited according to the combinations of these two factors, which has 30\*6=180 levels.  Means of each columns except the first two columns containing the factorial information are calculated using **sapply** and inline function **colMeans**.  
 ```
 s_df_meanstd<-split(df_meanstd, list(f1, f2))
 n_col_meanstd<-ncol(df_meanstd)
 sum_meanstd<-sapply(s_df_meanstd, function(y) colMeans(y[,3:n_col_meanstd]))
 ```
-The resulting dataframes from sapply have the row names in the format of "n.activity" where n represent the subject and activity is the descriptive name of the activity.  Therefore, I reconstructed the two columns with one containing subject information and the other containing activity description.  
-```
-sub<-data.frame(Subject=rep(1:30, times=6))
-act<-data.frame(Activity=rep(actlab_vect, each=30))
-```
-In addition, the dataframes contain 180 columns corresponding to averages on the 180 levels, ie the combination of subjects and activities.  Because we need to have each row representing one observation in a tidy data set, I transpose the rows and columns in the sum and sum_meanstd.  The transposed data body is subsequently combined with the subject and activity columns and the resulting final output dataframes are write to text files.
-### The code for original data set:
-```
-tp_sum<-as.data.frame(t(sum))
-output<-cbind(sub, act, tp_sum, row.names=NULL)
-write.table(output, './tidydata.txt', sep='\t')
-```
-### The code for the mean and std data set:
+the dataframes contain 180 columns corresponding to averages on the 180 levels, ie the combination of subjects and activities.  Because we need to have each row representing one observation in a tidy data set, I transpose the rows and columns.
 ```
 tp_sum_meanstd<-as.data.frame(t(sum_meanstd))
-output_meanstd<-cbind(sub, act, tp_sum_meanstd, row.names=NULL)
+```
+The resulting dataframes have the row names in the format of "n.activity" where n represent the subject and activity is the descriptive name of the activity.  Therefore, I reconstructed the two columns with one containing subject information and the other containing activity description by **strsplit** and put the separated names into a Subject vector and an Activity vector respectively.  These two vectors were then combined to the tp_sum_meanstd dataframe by **cbind**, resulting in dataframe output_meanstd.
+```
+rname<-strsplit(rownames(tp_sum_meanstd), '\\.')
+sub<-function(x){x[1]}
+act<-function(x){x[2]}
+Subject<-sapply(rname, sub)
+Activity<-sapply(rname, act)
+output_meanstd<-cbind(Subject, Activity, tp_sum_meanstd, row.names=NULL)
+```
+The column names in this dataframe contain special symbols such as '()' and '-'.  I removed these symbols from column names by **gsub** function, and write the output_meanstd in a file named 'tidydata.txt'.
+```
+colnames(output_meanstd)<-gsub('\\()','',gsub('-','',colnames(output_meanstd)))
 write.table(output_meanstd, './tidydata_meanstd.txt', row.names=F)
 ```
 
