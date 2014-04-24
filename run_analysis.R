@@ -41,13 +41,10 @@ for (i in 1:nrow(activity_labels)){
 
 f1<-as.factor(df_meanstd$Subject)
 f2<-ordered(df_meanstd$ActivityLabel, levels=as.character(activity_labels$V2))
-
 s_df_meanstd<-split(df_meanstd, list(f1, f2))
 n_col_meanstd<-ncol(df_meanstd)
 sum_meanstd<-sapply(s_df_meanstd, function(y) colMeans(y[,3:n_col_meanstd]))
 
-#sub<-data.frame(Subject=rep(1:30, times=6))
-#act<-data.frame(Activity=rep(actlab_vect, each=30))
 tp_sum_meanstd<-as.data.frame(t(sum_meanstd))
 rname<-strsplit(rownames(tp_sum_meanstd), '\\.')
 sub<-function(x){x[1]}
